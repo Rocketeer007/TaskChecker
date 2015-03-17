@@ -4,7 +4,7 @@
         "configurable"
     ],
     "companyName": "Prient Technologies",
-    "longName": "TaskChecker",
+    "longName": "Task Checker",
     "projectType": "pebblejs",
     "resources": {
         "media": [
@@ -28,10 +28,15 @@
                 "file": "fonts/UbuntuMono-Regular.ttf",
                 "name": "MONO_FONT_14",
                 "type": "font"
+            },
+            {
+                "file": "images/TaskChecker.png",
+                "name": "IMAGES_TASKCHECKER_PNG",
+                "type": "png"
             }
         ]
     },
-    "shortName": "TaskChecker",
+    "shortName": "Task Checker",
     "uuid": "4f52831b-cd43-4559-b32b-b62bca79aec4",
     "versionCode": 1,
     "versionLabel": "1.0",
