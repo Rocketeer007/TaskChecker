@@ -25,6 +25,9 @@ var splashWindow;
 var listMenu;
 var taskMenu;
 
+// Last/Current List Tracking
+var currentList = {};
+
 // Show splash screen while authentication with RTM
 showStatusMessage("Authenticating with Remember the Milk");
 
@@ -46,7 +49,7 @@ if (rtmToken && rtmToken !== undefined && rtmToken !== null) {
  *
  */
 function showStatusMessage(statusMessage, action) {
-	if (splashWindow !== null && splashWindow !== undefined) splashWindow.hide();
+	closeStatusMessage();
 	splashWindow = new UI.Window();
 	
 	// Text element to inform user
@@ -62,11 +65,21 @@ function showStatusMessage(statusMessage, action) {
 	});
 	
 	// Action Handler
-	if (action instanceof Function) splashWindow.on('click', 'select', action);
+	if (action instanceof Function) {
+		splashWindow.on('click', 'select', action);
+		splashWindow.on('click', 'back', action);
+	}
 	
 	// Add to splashWindow and show
 	splashWindow.add(text);
 	splashWindow.show();
+}
+
+/** 
+ * 
+ */
+function closeStatusMessage(windowEvent) {
+	if (splashWindow !== null && splashWindow !== undefined) splashWindow.hide();
 }
 
 /**
@@ -74,9 +87,9 @@ function showStatusMessage(statusMessage, action) {
  */
 function getAuthenticationFrob() {
 	// Get the Remember the Milk authentication Frob
-	console.log('Getting a new Frob');
+	// console.log('Getting a new Frob');
 	rtm.get('rtm.auth.getFrob', function(resp) {
-		console.log('Got Frob data: '+JSON.stringify(resp));
+		// console.log('Got Frob data: '+JSON.stringify(resp));
 		var frob = resp.rsp.frob;
 		// Save the Frob for later
 		Settings.data('rtmFrob', frob);
@@ -90,12 +103,12 @@ function getAuthenticationFrob() {
  */
 function getAuthenticationToken() {
 	rtmFrob = Settings.data('rtmFrob');
-	console.log('Getting Auth Token with Frob: '+rtmFrob);
+	// console.log('Getting Auth Token with Frob: '+rtmFrob);
 	// Get an authentication Token
 	rtm.get('rtm.auth.getToken', {'frob': rtmFrob}, function(resp){
 		if (!resp.rsp.auth) {
-			console.log('Auth token not found. Did you authenticate?\n');
-			console.log('Response: '+JSON.stringify(resp));
+			// console.log('Auth token not found. Did you authenticate?\n');
+			// console.log('Response: '+JSON.stringify(resp));
 			
 			var authURL = rtm.getAuthUrl(rtmFrob);
 			console.log('Please visit the following URL in your browser to authenticate:\n');
@@ -122,12 +135,12 @@ function getAuthenticationToken() {
  */
 function checkAuthenticationToken() {
 	rtmToken = Settings.data('rtmToken');
-	console.log('Checking token validity: '+rtmToken);
+	// console.log('Checking token validity: '+rtmToken);
 	// Check the Token
 	rtm.get('rtm.auth.checkToken', {'auth_token':rtmToken}, function(resp) {
 		// Token is not valid
 		if (!resp.rsp.stat || resp.rsp.stat != 'ok' || !resp.rsp.auth) {
-			console.log('Token invalid: '+JSON.stringify(resp));
+			// console.log('Token invalid: '+JSON.stringify(resp));
 			// Clear the saved token
 			Settings.data('rtmToken');
 			// Restart authentication from scratch
@@ -135,7 +148,7 @@ function checkAuthenticationToken() {
 			return;
 		}
 		// Token is okay
-		console.log('Token verified: '+JSON.stringify(resp));
+		// console.log('Token verified: '+JSON.stringify(resp));
 		
 		/* Save the token to the RTM object */
 		rtm.auth_token = resp.rsp.auth.token;
@@ -152,10 +165,10 @@ function getAvailableLists() {
 		var i, list;
 		var menuItems = [];
 		// Clear the existing lists (if any)
-		console.log('Found lists: '+JSON.stringify(resp));
+		// console.log('Found lists: '+JSON.stringify(resp));
 		for (i = 0; i < resp.rsp.lists.list.length; i++) {
 			list = resp.rsp.lists.list[i];
-			console.log('List '+i+': '+JSON.stringify(list));
+			// console.log('List '+i+': '+JSON.stringify(list));
 			menuItems.push({'title':list.name, 'rtmListId':list.id});
 		}
 		showListsMenu(menuItems);
@@ -179,7 +192,7 @@ function showListsMenu(menuItems) {
 	listMenu.on('select', getActiveTasks);
 	// Show the Menu, hide the splash
 	listMenu.show();
-	if (splashWindow !== null && splashWindow !== undefined) splashWindow.hide();
+	closeStatusMessage();
 }
 
 /**
@@ -187,7 +200,7 @@ function showListsMenu(menuItems) {
  */
 function getActiveTasks(menuEvent, evtName, evtValue) {
 	// Identify the menu item that has been selected
-	console.log('Menu Event: '+menuEvent.item.title+'/'+menuEvent.itemIndex+'/'+menuEvent.item.rtmListId);
+	// console.log('Menu Event: '+menuEvent.item.title+'/'+menuEvent.itemIndex+'/'+menuEvent.item.rtmListId);
 	var rtmListTitle = menuEvent.item.title;
 	var rtmListId    = menuEvent.item.rtmListId;
 	var rtmFilterText = 'status:incomplete';
@@ -204,24 +217,30 @@ function getFilteredTasks(rtmListTitle, rtmListId, rtmFilterText) {
 	var rtmParams;
 	if (rtmListId == -1) rtmParams = {'filter':rtmFilterText};
 	else rtmParams = {'list_id':rtmListId, 'filter':rtmFilterText};
+	// Track the Current List
+	currentList = {
+		'rtmListTitle':rtmListTitle,
+		'rtmListId':rtmListId,
+		'rtmFilterText':rtmFilterText
+	};
 	// Fetch all the tasks from the selected list with filter, and create a menu
 	rtm.get('rtm.tasks.getList', rtmParams, function(resp){
-		console.log('Found items: '+JSON.stringify(resp));
+		// console.log('Found items: '+JSON.stringify(resp));
 		var menuTasks = [];
 		if (!resp.rsp.tasks.list) {
 			showStatusMessage('No Active Tasks On This List');
 		} else {
-			console.log('Found '+resp.rsp.tasks.list.length+' lists!');
+			// console.log('Found '+resp.rsp.tasks.list.length+' lists!');
 			// Loop through the Lists returned for this query
 			for (var i = 0; i < resp.rsp.tasks.list.length; i++) {
 				// Force the TaskSeries to be an array
 				if (resp.rsp.tasks.list[i].taskseries.constructor !== Array) 
 					resp.rsp.tasks.list[i].taskseries = [resp.rsp.tasks.list[i].taskseries];
-				console.log('List '+i+' has '+resp.rsp.tasks.list[i].taskseries.length+'task(s)');
+				// console.log('List '+i+' has '+resp.rsp.tasks.list[i].taskseries.length+'task(s)');
 				// Loop through the TaskSeries entries on this List
 				for (var j = 0; j < resp.rsp.tasks.list[i].taskseries.length; j++) {
 					var rtmTaskSeries = resp.rsp.tasks.list[i].taskseries[j];
-					console.log('List '+i+' / TaskSeries '+j+': '+JSON.stringify(rtmTaskSeries));
+					// console.log('List '+i+' / TaskSeries '+j+': '+JSON.stringify(rtmTaskSeries));
 					// Force the Task to be an array
 					if (rtmTaskSeries.task.constructor !== Array) 
 						rtmTaskSeries.task = [rtmTaskSeries.task];
@@ -258,7 +277,19 @@ function showTasksMenu(listName, menuItems) {
 	taskMenu.on('longSelect', completeTask);
 	// Show the Menu, hide the splash (if present)
 	taskMenu.show();
-	if (splashWindow !== null && splashWindow !== undefined) splashWindow.hide();
+	closeStatusMessage();
+}
+
+/** 
+ *
+ */
+function refreshCurrentList() {
+	if (currentList.rtmListTitle !== undefined) {
+		getFilteredTasks(currentList.rtmListTitle, currentList.rtmListId, currentList.rtmFilterText);
+	} else {
+		getAvailableLists();
+	}
+	
 }
 
 /** 
@@ -321,7 +352,10 @@ function handleTaskOption(menuEvent, evtName, evtValue) {
  * 
  */
 function getTimeline(menuEvent, evtName, evtValue, nextAction) {
-	nextAction(menuEvent, evtName, evtValue, '<Unknown>');
+	rtm.get('rtm.timelines.create', {}, function(resp){
+		// console.log('Timeline Created: '+JSON.stringify(resp));
+		nextAction(menuEvent, evtName, evtValue, resp.rsp.timeline);
+	});
 }
 
 /**
@@ -342,18 +376,31 @@ function postponeTask(menuEvent, evtName, evtValue, rtmTimeline) {
 	if (rtmTimeline === undefined || rtmTimeline === null) {
 		getTimeline(menuEvent, evtName, evtValue, postponeTask);
 	} else {
-		showStatusMessage('Postpone on TL '+rtmTimeline+': '+menuEvent.item.rtmListId+'/'+menuEvent.item.rtmTaskSeriesId+'/'+menuEvent.item.rtmTaskId);
+		var rtmParams = {
+			'timeline':rtmTimeline,
+			'list_id':menuEvent.item.rtmListId,
+			'taskseries_id':menuEvent.item.rtmTaskSeriesId,
+			'task_id':menuEvent.item.rtmTaskId
+		};
+		rtm.get('rtm.tasks.postpone', rtmParams, function(resp){
+			console.log('Task Postponed: '+JSON.stringify(resp));
+			if (resp.rsp.stat == 'ok') {
+				var postponed = resp.rsp.list.taskseries.task.postponed;
+				var subMessage = (postponed > 0) ? "\n"+'for the '+postponed+getOrdinal(postponed)+' time' : '';
+				showStatusMessage('Task Postponed'+subMessage, refreshCurrentList);
+			}
+			
+			
+		});
+		
 	}
 }
 
-function testMenuOn(menuEvent, evtName, evtValue, option3, option4) {
-	try {
-		console.log('menuEvent: '+JSON.stringify(menuEvent));
-	} catch (e) {
-		console.log('menuEvent: '+typeof(menuEvent)+' = '+menuEvent);
-	}
-	console.log('evtName: '+typeof(evtName)+' = '+evtName);
-	console.log('evtValue: '+typeof(evtValue)+' = '+evtValue);
-	console.log('option3: '+typeof(option3)+' = '+option3);
-	console.log('option4: '+typeof(option4)+' = '+option4);
+/**
+ * From https://gist.github.com/jlbruno/1535691
+ */
+function getOrdinal(n) {
+	var s=["th","st","nd","rd"],
+	v=n%100;
+	return n+(s[(v-20)%10]||s[v]||s[0]);
 }
