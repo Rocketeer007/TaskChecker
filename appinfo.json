@@ -10,7 +10,6 @@
         "media": [
             {
                 "file": "images/menu_icon.png",
-                "menuIcon": true,
                 "name": "IMAGE_MENU_ICON",
                 "type": "png"
             },
@@ -30,8 +29,9 @@
                 "type": "font"
             },
             {
-                "file": "images/TaskChecker.png",
-                "name": "IMAGES_TASKCHECKER_PNG",
+                "file": "images/TaskCheckerIcon.png",
+                "menuIcon": true,
+                "name": "IMAGES_TASKCHECKERICON_PNG",
                 "type": "png"
             }
         ]
