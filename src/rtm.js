@@ -35,8 +35,6 @@
  *   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  *   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-var md5 = require('md5');
-var ajax = require('ajax');
 (function (root, factory) {
 	if (typeof exports === "object" && exports) {
 		module.exports = factory; // CommonJS
@@ -47,21 +45,33 @@ var ajax = require('ajax');
 	}
 }(this, (function () {
 	var exports = function (appKey, appSecret, permissions, format) {
+		var https, crypto, ajax;
 
 		this.authUrl = 'https://www.rememberthemilk.com/services/auth/';
 		this.baseUrl = 'https://api.rememberthemilk.com/services/rest/';
 
-		this.isPebble = true;
-		this.isWinJS = false;
-		this.isNode = false;
-		this.isFirefoxOS = false;
+		this.isPebble = (typeof Pebble !== 'undefined');
+		this.isWinJS = (typeof WinJS !== 'undefined');
+		this.isNode = (!this.isPebble && typeof module !== 'undefined' && module.exports);
+		this.isFirefoxOS = (typeof MozActivity !== 'undefined'); //Best way to do it right now (also working on Fifrefox for Android, and temporary as everything is built to eventually be a standard)
 
-		this.md5 = md5;
+		if (this.isNode) {
+			https = require('https');
+			crypto = require('crypto');
+			this.md5 = function(string) {
+				return crypto.createHash('md5').update(string, 'utf8').digest("hex");
+			};
+		} else if (this.isPebble) {
+			this.md5 = require('md5');
+			ajax = require('ajax');
+		} else {
+			this.md5 = md5;
+		}
 
-		appKey = (appKey) ? appKey : '';
-		appSecret = (appSecret) ? appSecret : '';
-		permissions = (permissions) ? permissions : 'read';
-		format = (format) ? format : 'json';
+		var appKey = (appKey) ? appKey : '',
+			appSecret = (appSecret) ? appSecret : '',
+			permissions = (permissions) ? permissions : 'read',
+			format = (format) ? format : 'json';
 
 		if (!appKey || !appSecret) {
 			throw 'Error: App Key and Secret Key must be defined.';
@@ -80,10 +90,10 @@ var ajax = require('ajax');
 		 * @return          Returns the URL encoded string of parameters
 		 */
 		this.encodeUrlParams = function (params, signed) {
-			params = (params) ? params : {};
-			signed = (signed) ? signed : false;
-			var paramString = '';
-			var count;
+			var params = (params) ? params : {},
+				signed = (signed) ? signed : false,
+				paramString = '',
+				count;
 
 			params.format = this.format;
 			params.api_key = this.appKey;
@@ -116,15 +126,16 @@ var ajax = require('ajax');
 		 * @return          Returns the URL encoded authentication signature
 		 */
 		this.generateSig = function (params) {
-			params = (params) ? params : {};
-			var signature;
-			var signatureUrl;
-			var i;
+			var params = (params) ? params : {},
+				signature,
+				signatureUrl,
+				i,
+				keys;
 
 			signature = '';
 			signatureUrl = '&api_sig=';
 
-			var keys = Object.keys(params);
+			keys = Object.keys(params);
 			keys.sort();
 
 			for (i = 0; i < keys.length; i++) {
@@ -169,9 +180,9 @@ var ajax = require('ajax');
 		 * @return          Returns the reponse from the RTM API
 		 */
 		this.get = function (method, params, callback) {
-			method = (method) ? method : '';
-			params = (params) ? params : {};
-			var callbackName,
+			var method = (method) ? method : '',
+				params = (params) ? params : {},
+				callbackName,
 				requestUrl,
 				s;
 
@@ -232,15 +243,15 @@ var ajax = require('ajax');
 				var xhr = new XMLHttpRequest({mozSystem: true});
 				xhr.open("POST", requestUrl, true);
 
-				xhr.onreadystatechange = function () {
-					if (xhr.status === 200 && xhr.readyState === 4) {
-						callback.call(this, JSON.parse(xhr.response));
-					}
-				};
+            	xhr.onreadystatechange = function () {
+	                if (xhr.status === 200 && xhr.readyState === 4) {
+	                    callback.call(this, JSON.parse(xhr.response));
+	                }
+	            };
 
-				xhr.onerror = function () {
-					console.log("XHR error");
-				};
+	            xhr.onerror = function () {
+	                console.log("XHR error");
+            	};
 
 				xhr.send();
 			} else {

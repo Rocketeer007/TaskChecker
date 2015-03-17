@@ -24,6 +24,7 @@ var rtmToken = Settings.data('rtmToken');
 var splashWindow;
 var listMenu;
 var taskMenu;
+var taskOptionMenu;
 
 // Last/Current List Tracking
 var currentList = {};
@@ -179,6 +180,7 @@ function getAvailableLists() {
  *
  */
 function showListsMenu(menuItems) {
+	closeListsMenu();
 	// Construct Menu to show to user
 	listMenu = new UI.Menu({
 		sections: [{
@@ -193,6 +195,10 @@ function showListsMenu(menuItems) {
 	// Show the Menu, hide the splash
 	listMenu.show();
 	closeStatusMessage();
+}
+
+function closeListsMenu() {
+	if (listMenu !== null && listMenu !== undefined) listMenu.hide();
 }
 
 /**
@@ -266,6 +272,7 @@ function getFilteredTasks(rtmListTitle, rtmListId, rtmFilterText) {
  *
  */
 function showTasksMenu(listName, menuItems) {
+	closeTasksMenu();
 	// Construct Menu to show to user
 	taskMenu = new UI.Menu({
 		sections: [{
@@ -278,6 +285,10 @@ function showTasksMenu(listName, menuItems) {
 	// Show the Menu, hide the splash (if present)
 	taskMenu.show();
 	closeStatusMessage();
+}
+
+function closeTasksMenu() {
+	if (taskMenu !== null && taskMenu !== undefined) taskMenu.hide();
 }
 
 /** 
@@ -311,7 +322,7 @@ function refreshCurrentList() {
  */
 function showTaskOptions(menuEvent, evtName, evtValue) {
 	// Construct a new menu with options
-	var taskOptionMenu = new UI.Menu({
+	taskOptionMenu = new UI.Menu({
 		sections: [{
 			title: menuEvent.item.title,
 			items: [{
@@ -331,7 +342,11 @@ function showTaskOptions(menuEvent, evtName, evtValue) {
 	});
 	taskOptionMenu.on('select', handleTaskOption);
 	taskOptionMenu.show();
-	if (splashWindow !== null && splashWindow !== undefined) splashWindow.hide();
+	closeStatusMessage();
+}
+
+function closeTaskOptions() {
+	if (taskOptionMenu !== null && taskOptionMenu !== undefined) taskOptionMenu.hide();
 }
 
 /**
@@ -365,7 +380,21 @@ function completeTask(menuEvent, evtName, evtValue, rtmTimeline) {
 	if (rtmTimeline === undefined || rtmTimeline === null) {
 		getTimeline(menuEvent, evtName, evtValue, completeTask);
 	} else {
-		showStatusMessage('Complete on TL '+rtmTimeline+': '+menuEvent.item.rtmListId+'/'+menuEvent.item.rtmTaskSeriesId+'/'+menuEvent.item.rtmTaskId);
+		var rtmParams = {
+			'timeline':rtmTimeline,
+			'list_id':menuEvent.item.rtmListId,
+			'taskseries_id':menuEvent.item.rtmTaskSeriesId,
+			'task_id':menuEvent.item.rtmTaskId
+		};
+		rtm.get('rtm.tasks.complete', rtmParams, function(resp){
+			console.log('Task Completed: '+JSON.stringify(resp));
+			if (resp.rsp.stat == 'ok') {
+				showStatusMessage('Task Completed', refreshCurrentList);
+				closeTaskOptions();
+			}
+			
+			
+		});
 	}
 }
 
@@ -383,11 +412,12 @@ function postponeTask(menuEvent, evtName, evtValue, rtmTimeline) {
 			'task_id':menuEvent.item.rtmTaskId
 		};
 		rtm.get('rtm.tasks.postpone', rtmParams, function(resp){
-			console.log('Task Postponed: '+JSON.stringify(resp));
+			//console.log('Task Postponed: '+JSON.stringify(resp));
 			if (resp.rsp.stat == 'ok') {
 				var postponed = resp.rsp.list.taskseries.task.postponed;
-				var subMessage = (postponed > 0) ? "\n"+'for the '+postponed+getOrdinal(postponed)+' time' : '';
+				var subMessage = (postponed > 0) ? "\n"+'for the '+getOrdinal(postponed)+' time' : '';
 				showStatusMessage('Task Postponed'+subMessage, refreshCurrentList);
+				closeTaskOptions();
 			}
 			
 			
