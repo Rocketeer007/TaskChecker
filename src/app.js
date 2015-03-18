@@ -32,6 +32,9 @@ var currentList = {};
 // Show splash screen while authentication with RTM
 showStatusMessage("Authenticating with Remember the Milk");
 
+// Settings / Configuration
+Settings.config({'url':'http://taskchecker.prient.co.uk/configurable.html', 'autoSave':false}, null, null);
+
 // Configure the Locale
 moment.locale('en-gb');
 
@@ -117,7 +120,7 @@ function getAuthenticationToken() {
 			
 			showStatusMessage('Please open Settings to Authorise with RTM', getAuthenticationToken);
 			
-			Settings.config({'url':authURL, 'autoSave':false}, null, null /**/);
+			Settings.option('authURL', authURL);
 		} else {
 			// Save the Token & clear the Frob
 			Settings.data('rtmToken', resp.rsp.auth.token);
@@ -162,6 +165,7 @@ function checkAuthenticationToken() {
  * 
  */
 function getAvailableLists() {
+	showStatusMessage('Fetching Lists from RTM');
 	rtm.get('rtm.lists.getList', function(resp){
 		var i, list;
 		var menuItems = [];
@@ -230,8 +234,13 @@ function getFilteredTasks(rtmListTitle, rtmListId, rtmFilterText) {
 		'rtmFilterText':rtmFilterText
 	};
 	// Fetch all the tasks from the selected list with filter, and create a menu
+	showStatusMessage('Fetching Tasks from RTM');
 	rtm.get('rtm.tasks.getList', rtmParams, function(resp){
-		// console.log('Found items: '+JSON.stringify(resp));
+		if (resp.rsp.stat != 'ok') {
+			showStatusMessage('Error fetching Tasks!');
+			console.log('Error: '+JSON.stringify(resp));
+			return;
+		}
 		var menuTasks = [];
 		if (!resp.rsp.tasks.list) {
 			showStatusMessage('No Active Tasks On This List');
@@ -367,6 +376,7 @@ function handleTaskOption(menuEvent, evtName, evtValue) {
  * 
  */
 function getTimeline(menuEvent, evtName, evtValue, nextAction) {
+	showStatusMessage('Getting a Timeline');
 	rtm.get('rtm.timelines.create', {}, function(resp){
 		// console.log('Timeline Created: '+JSON.stringify(resp));
 		nextAction(menuEvent, evtName, evtValue, resp.rsp.timeline);
@@ -386,6 +396,7 @@ function completeTask(menuEvent, evtName, evtValue, rtmTimeline) {
 			'taskseries_id':menuEvent.item.rtmTaskSeriesId,
 			'task_id':menuEvent.item.rtmTaskId
 		};
+		showStatusMessage('Completing Task');
 		rtm.get('rtm.tasks.complete', rtmParams, function(resp){
 			console.log('Task Completed: '+JSON.stringify(resp));
 			if (resp.rsp.stat == 'ok') {
@@ -411,6 +422,7 @@ function postponeTask(menuEvent, evtName, evtValue, rtmTimeline) {
 			'taskseries_id':menuEvent.item.rtmTaskSeriesId,
 			'task_id':menuEvent.item.rtmTaskId
 		};
+		showStatusMessage('Postponing Task');
 		rtm.get('rtm.tasks.postpone', rtmParams, function(resp){
 			//console.log('Task Postponed: '+JSON.stringify(resp));
 			if (resp.rsp.stat == 'ok') {
