@@ -26,6 +26,9 @@ var listMenu;
 var taskMenu;
 var taskOptionMenu;
 
+// Message delay in ms
+var messageDelay = 2400;
+
 // Last/Current List Tracking
 var currentList = {};
 
@@ -52,7 +55,9 @@ if (rtmToken && rtmToken !== undefined && rtmToken !== null) {
 /**
  *
  */
-function showStatusMessage(statusMessage, action) {
+function showStatusMessage(statusMessage, action, delay) {
+	var timeoutAction;
+	
 	closeStatusMessage();
 	splashWindow = new UI.Window();
 	
@@ -70,8 +75,18 @@ function showStatusMessage(statusMessage, action) {
 	
 	// Action Handler
 	if (action instanceof Function) {
-		splashWindow.on('click', 'select', action);
-		splashWindow.on('click', 'back', action);
+		var overrideAction = function() { 
+			if (timeoutAction !== null) 
+				clearTimeout(timeoutAction); 
+			action();
+		};
+		splashWindow.on('click', 'select', overrideAction);
+		splashWindow.on('click', 'back', overrideAction);
+	}
+	
+	// Auto-timeout
+	if (delay > 0 && action instanceof Function) {
+		timeoutAction = setTimeout(action, delay);
 	}
 	
 	// Add to splashWindow and show
@@ -166,11 +181,13 @@ function checkAuthenticationToken() {
  */
 function getAvailableLists() {
 	showStatusMessage('Fetching Lists from RTM');
+	
+	//rtm.get('rtm.settings.getList', function(resp) {console.log('Found settings: '+JSON.stringify(resp));});
+	
 	rtm.get('rtm.lists.getList', function(resp){
 		var i, list;
 		var menuItems = [];
-		// Clear the existing lists (if any)
-		// console.log('Found lists: '+JSON.stringify(resp));
+		//console.log('Found lists: '+JSON.stringify(resp));
 		for (i = 0; i < resp.rsp.lists.list.length; i++) {
 			list = resp.rsp.lists.list[i];
 			// console.log('List '+i+': '+JSON.stringify(list));
@@ -189,7 +206,10 @@ function showListsMenu(menuItems) {
 	listMenu = new UI.Menu({
 		sections: [{
 			title: 'Daily Lists',
-			items: [{'title':'Today','rtmListId':-1,'rtmListFilter':'dueBefore:tomorrow'}]
+			items: [
+				{'title':'Today','rtmListId':-1,'rtmListFilter':'dueBefore:tomorrow'},
+				{'title':'Tomorrow','rtmListId':-1,'rtmListFilter':'due:tomorrow'}
+			]
 		},{
 			title: 'User Lists',
 			items: menuItems
@@ -398,9 +418,9 @@ function completeTask(menuEvent, evtName, evtValue, rtmTimeline) {
 		};
 		showStatusMessage('Completing Task');
 		rtm.get('rtm.tasks.complete', rtmParams, function(resp){
-			console.log('Task Completed: '+JSON.stringify(resp));
+			//console.log('Task Completed: '+JSON.stringify(resp));
 			if (resp.rsp.stat == 'ok') {
-				showStatusMessage('Task Completed', refreshCurrentList);
+				showStatusMessage('Task Completed', refreshCurrentList, messageDelay);
 				closeTaskOptions();
 			}
 			
@@ -428,7 +448,7 @@ function postponeTask(menuEvent, evtName, evtValue, rtmTimeline) {
 			if (resp.rsp.stat == 'ok') {
 				var postponed = resp.rsp.list.taskseries.task.postponed;
 				var subMessage = (postponed > 0) ? "\n"+'for the '+getOrdinal(postponed)+' time' : '';
-				showStatusMessage('Task Postponed'+subMessage, refreshCurrentList);
+				showStatusMessage('Task Postponed'+subMessage, refreshCurrentList, messageDelay);
 				closeTaskOptions();
 			}
 			
