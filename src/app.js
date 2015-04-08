@@ -288,10 +288,12 @@ function getFilteredTasks(rtmListTitle, rtmListId, rtmFilterText) {
 							dueDate = dueDate.substr(0, dueDate.indexOf(' at '));
 						}
 						subTitle += dueDate;
-						menuTasks.push({'title':rtmTaskSeries.name,'subtitle':subTitle,'rtmListId':resp.rsp.tasks.list[i].id,'rtmTaskSeriesId':rtmTaskSeries.id,'rtmTaskId':rtmTask.id});
+						menuTasks.push({'title':rtmTaskSeries.name,'subtitle':subTitle,'priority':rtmTask.priority,'rtmListId':resp.rsp.tasks.list[i].id,'rtmTaskSeriesId':rtmTaskSeries.id,'rtmTaskId':rtmTask.id});
 					}
 				}
 			}
+			// Sort tasks by Priority then by Title
+			menuTasks.sort(dynamicSortMultiple("priority", "title"));
 			showTasksMenu(rtmListTitle, menuTasks);
 		}
 	});
@@ -465,4 +467,38 @@ function getOrdinal(n) {
 	var s=["th","st","nd","rd"],
 	v=n%100;
 	return n+(s[(v-20)%10]||s[v]||s[0]);
+}
+
+/**
+ * From http://stackoverflow.com/questions/1129216/sorting-objects-in-an-array-by-a-field-value-in-javascript/4760279#4760279
+ */
+function dynamicSort(property) {
+    var sortOrder = 1;
+    if(property[0] === "-") {
+        sortOrder = -1;
+        property = property.substr(1);
+    }
+    return function (a,b) {
+        var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
+        return result * sortOrder;
+    };
+}
+function dynamicSortMultiple() {
+    /*
+     * save the arguments object as it will be overwritten
+     * note that arguments object is an array-like object
+     * consisting of the names of the properties to sort by
+     */
+    var props = arguments;
+    return function (obj1, obj2) {
+        var i = 0, result = 0, numberOfProperties = props.length;
+        /* try getting a different result from 0 (equal)
+         * as long as we have extra properties to compare
+         */
+        while(result === 0 && i < numberOfProperties) {
+            result = dynamicSort(props[i])(obj1, obj2);
+            i++;
+        }
+        return result;
+    };
 }
