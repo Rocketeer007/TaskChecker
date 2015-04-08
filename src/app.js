@@ -288,12 +288,12 @@ function getFilteredTasks(rtmListTitle, rtmListId, rtmFilterText) {
 							dueDate = dueDate.substr(0, dueDate.indexOf(' at '));
 						}
 						subTitle += dueDate;
-						menuTasks.push({'title':rtmTaskSeries.name,'subtitle':subTitle,'priority':rtmTask.priority,'rtmListId':resp.rsp.tasks.list[i].id,'rtmTaskSeriesId':rtmTaskSeries.id,'rtmTaskId':rtmTask.id});
+						menuTasks.push({'title':rtmTaskSeries.name,'subtitle':subTitle,'due':rtmTask.due,'priority':rtmTask.priority,'rtmListId':resp.rsp.tasks.list[i].id,'rtmTaskSeriesId':rtmTaskSeries.id,'rtmTaskId':rtmTask.id});
 					}
 				}
 			}
-			// Sort tasks by Priority then by Title
-			menuTasks.sort(dynamicSortMultiple("priority", "title"));
+			// Sort tasks by Priority, Due Date then Title
+			menuTasks.sort(dynamicSortMultiple("priority", "due", "title"));
 			showTasksMenu(rtmListTitle, menuTasks);
 		}
 	});
