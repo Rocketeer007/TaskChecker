@@ -187,7 +187,7 @@ function getAvailableLists() {
 	rtm.get('rtm.lists.getList', function(resp){
 		var i, list;
 		var menuItems = [];
-		//console.log('Found lists: '+JSON.stringify(resp));
+		// console.log('Found lists: '+JSON.stringify(resp));
 		for (i = 0; i < resp.rsp.lists.list.length; i++) {
 			list = resp.rsp.lists.list[i];
 			// console.log('List '+i+': '+JSON.stringify(list));
